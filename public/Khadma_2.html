@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pointage & Gains - حساب سوايع الخدمة</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Cairo for Arabic -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Cairo', 'sans-serif'],
+                        arabic: ['Cairo', 'sans-serif']
+                    },
+                    colors: {
+                        dzgreen: '#006233',
+                        dzred: '#d21034',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+        }
+        /* Custom scrollbar for table */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-gradient-to-r from-emerald-700 to-teal-800 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
+                    <i class="fa-solid fa-business-time text-2xl text-emerald-100"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight flex items-center gap-2">
+                        <span>Khadmati DZ</span>
+                        <span class="text-sm font-normal bg-emerald-600/80 px-2.5 py-0.5 rounded-full border border-emerald-400/30 font-arabic">حساب سوايع الخدمة</span>
+                    </h1>
+                    <p class="text-xs text-emerald-100/80">Suivi de présence et calcul des gains quotidiens</p>
+                </div>
+            </div>
+
+            <!-- Quick Rate Display & Action Buttons -->
+            <div class="flex items-center gap-2 sm:gap-3 ml-auto">
+                <button onclick="exportCSV()" class="bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm px-3 py-2 rounded-xl transition flex items-center gap-2 border border-white/15 shadow-sm" title="Télécharger en Excel/CSV">
+                    <i class="fa-solid fa-file-export"></i>
+                    <span class="hidden sm:inline">Exporter CSV</span>
+                </button>
+                <button onclick="openClearModal()" class="bg-rose-500/80 hover:bg-rose-600 text-white text-xs sm:text-sm px-3 py-2 rounded-xl transition flex items-center gap-2 shadow-sm" title="Tout effacer">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span class="hidden sm:inline">Réinitialiser</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6 space-y-6">
+
+        <!-- Notification Banner (Hidden by default) -->
+        <div id="toast" class="hidden fixed bottom-5 right-5 z-50 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 transition-all duration-300">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            <span id="toast-msg" class="text-sm font-medium">Opération réussie</span>
+        </div>
+
+        <!-- Summary Dashboard Cards (Bilan Global) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Hourly Wage Config Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-coins text-amber-400/40 text-3xl"></i>
+                </div>
+                <div>
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tarif Horaire</span>
+                        <span class="text-xs font-arabic font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">السومة تاع الساعة</span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <input type="number" id="hourlyRateInput" min="0" step="10" 
+                            class="w-full text-2xl font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                            placeholder="Ex: 250" oninput="updateHourlyRate(this.value)">
+                        <span class="text-sm font-bold text-slate-500 shrink-0">DA / h</span>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-info text-amber-500"></i> Modifiez pour recalculer automatiquement
+                </p>
+            </div>
+
+            <!-- Total Days Worked Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-calendar-check text-blue-400/40 text-3xl"></i>
+                </div>
+                <div>
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Jours Travaillés</span>
+                        <span class="text-xs font-arabic font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">أيام الخدمة</span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <h2 id="totalDaysDisplay" class="text-3xl font-extrabold text-slate-800">0</h2>
+                        <span class="text-sm font-medium text-slate-500">jours (أيام)</span>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-slate-500">
+                    Moyenne: <span id="avgHoursPerDay" class="font-semibold text-slate-700">0h 00m</span> / jour
+                </div>
+            </div>
+
+            <!-- Total Hours Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-20 h-20 bg-purple-50 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-clock text-purple-400/40 text-3xl"></i>
+                </div>
+                <div>
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total des Heures</span>
+                        <span class="text-xs font-arabic font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">مجموع السوايع</span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <h2 id="totalHoursDisplay" class="text-3xl font-extrabold text-slate-800">0h 00m</h2>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-slate-500">
+                    Équivalent décimal: <span id="totalDecimalHours" class="font-semibold text-purple-700">0.00</span> h
+                </div>
+            </div>
+
+            <!-- Total Earnings Card -->
+            <div class="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-2xl shadow-md text-white flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-sack-dollar text-white/20 text-4xl"></i>
+                </div>
+                <div>
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-100">Total des Gains</span>
+                        <span class="text-xs font-arabic font-semibold text-emerald-950 bg-emerald-300 px-2 py-0.5 rounded-md">مجموع الدراهم</span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-1.5">
+                        <h2 id="totalEarningsDisplay" class="text-3xl font-extrabold tracking-tight">0</h2>
+                        <span class="text-base font-bold text-emerald-200">DA</span>
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-emerald-100/90 flex items-center justify-between">
+                    <span>En centimes:</span>
+                    <span id="totalCentimesDisplay" class="font-semibold bg-black/20 px-2 py-0.5 rounded text-emerald-200">0 سنتيم</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace Grid: Left Form, Right Table -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Entry Form (Ajouter une journée) -->
+            <div class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="bg-slate-800 text-white px-5 py-4 flex justify-between items-center">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-calendar-plus text-emerald-400 text-lg"></i>
+                        <h3 class="font-bold text-base">Marquer une journée</h3>
+                    </div>
+                    <span class="text-xs font-arabic bg-slate-700 text-emerald-300 px-2.5 py-1 rounded-lg">تسجيل نهار جديد</span>
+                </div>
+
+                <form id="attendanceForm" onsubmit="handleFormSubmit(event)" class="p-5 space-y-4">
+                    <!-- Date Input -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5 flex justify-between">
+                            <span><i class="fa-regular fa-calendar mr-1 text-emerald-600"></i> Date du jour</span>
+                            <span class="font-arabic text-slate-500">التاريخ</span>
+                        </label>
+                        <input type="date" id="entryDate" required
+                            class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                    </div>
+
+                    <!-- Check-in & Check-out Grid -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5 flex justify-between">
+                                <span><i class="fa-solid fa-right-to-bracket mr-1 text-emerald-600"></i> Entrée</span>
+                                <span class="font-arabic text-slate-500">الدخلة</span>
+                            </label>
+                            <input type="time" id="checkInTime" required value="08:00" oninput="updateLivePreview()"
+                                class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5 flex justify-between">
+                                <span><i class="fa-solid fa-right-from-bracket mr-1 text-rose-500"></i> Sortie</span>
+                                <span class="font-arabic text-slate-500">الخرجة</span>
+                            </label>
+                            <input type="time" id="checkOutTime" required value="17:00" oninput="updateLivePreview()"
+                                class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                        </div>
+                    </div>
+
+                    <!-- Break Duration Input (Pause) -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5 flex justify-between">
+                            <span><i class="fa-solid fa-mug-hot mr-1 text-amber-600"></i> Pause (Minutes)</span>
+                            <span class="font-arabic text-slate-500">وقت الفطور / الراحة</span>
+                        </label>
+                        <div class="grid grid-cols-4 gap-2 mb-2">
+                            <button type="button" onclick="setBreak(0)" class="break-btn text-xs py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-medium text-slate-600 transition">0 min</button>
+                            <button type="button" onclick="setBreak(30)" class="break-btn text-xs py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-medium text-slate-600 transition">30 min</button>
+                            <button type="button" onclick="setBreak(60)" class="break-btn text-xs py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-medium text-slate-600 transition">1 heure</button>
+                            <button type="button" onclick="setBreak(90)" class="break-btn text-xs py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 font-medium text-slate-600 transition">1h 30m</button>
+                        </div>
+                        <input type="number" id="breakMinutes" min="0" max="480" value="60" oninput="updateLivePreview()"
+                            class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-3.5 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+                            placeholder="Minutes de pause (ex: 60)">
+                    </div>
+
+                    <!-- Optional Note -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1.5 flex justify-between">
+                            <span><i class="fa-regular fa-comment-dots mr-1 text-slate-400"></i> Remarque (Optionnel)</span>
+                            <span class="font-arabic text-slate-500">ملاحظة</span>
+                        </label>
+                        <input type="text" id="entryNote" placeholder="Ex: Chantier Alger, Heures sup..."
+                            class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+                    </div>
+
+                    <!-- Live Calculation Preview Box -->
+                    <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3.5 space-y-2">
+                        <div class="flex justify-between items-center text-xs text-emerald-800 font-medium">
+                            <span>Aperçu du jour (حساب النهار):</span>
+                            <span id="previewNightShift" class="hidden text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">
+                                <i class="fa-solid fa-moon mr-1"></i>Service de nuit
+                            </span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-1 border-t border-emerald-200/60">
+                            <div>
+                                <span class="text-xs text-slate-500 block">Heures nettes:</span>
+                                <span id="previewHours" class="text-lg font-extrabold text-slate-800">8h 00m</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-500 block">Gain estimé:</span>
+                                <span id="previewEarnings" class="text-lg font-extrabold text-emerald-700">2 000 DA</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-plus-circle text-base"></i>
+                        <span>Enregistrer la journée (سجّل النهار)</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- History Table (Historique des journées) -->
+            <div class="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex flex-col">
+                <div class="bg-slate-800 text-white px-5 py-4 flex flex-wrap justify-between items-center gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-list-check text-emerald-400 text-lg"></i>
+                        <h3 class="font-bold text-base">Historique de Présence</h3>
+                        <span class="text-xs font-arabic bg-slate-700 text-emerald-300 px-2.5 py-1 rounded-lg">سجل الأيام لي خدمتهم</span>
+                    </div>
+
+                    <!-- Filter / Sort controls -->
+                    <div class="flex items-center gap-2">
+                        <input type="month" id="monthFilter" onchange="renderTable()" 
+                            class="bg-slate-700 text-white text-xs rounded-lg px-2.5 py-1.5 border border-slate-600 focus:outline-none focus:border-emerald-400"
+                            title="Filtrer par mois">
+                        <button onclick="resetFilter()" id="resetFilterBtn" class="hidden text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg transition">
+                            Tous
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Wrapper -->
+                <div class="overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                <th class="py-3.5 px-4">Date <span class="font-arabic font-normal text-slate-400 block">التاريخ</span></th>
+                                <th class="py-3.5 px-4">Horaires <span class="font-arabic font-normal text-slate-400 block">الدخلة والخرجة</span></th>
+                                <th class="py-3.5 px-4">Pause <span class="font-arabic font-normal text-slate-400 block">الراحة</span></th>
+                                <th class="py-3.5 px-4">Durée <span class="font-arabic font-normal text-slate-400 block">السوايع</span></th>
+                                <th class="py-3.5 px-4 text-right">Gain (DA) <span class="font-arabic font-normal text-slate-400 block">الدراهم</span></th>
+                                <th class="py-3.5 px-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody" class="divide-y divide-slate-200/70 text-sm">
+                            <!-- Rows injected dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State (Shown when no records exist) -->
+                <div id="emptyState" class="hidden py-12 px-4 text-center">
+                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
+                        <i class="fa-regular fa-calendar-xmark text-2xl"></i>
+                    </div>
+                    <h4 class="text-slate-700 font-bold text-base">Aucune journée enregistrée</h4>
+                    <p class="text-slate-500 text-xs font-arabic mt-1">مازال ما سجلت حتى نهار تاع خدمة. عمر الفورميلار على اليسار باش تبدا!</p>
+                </div>
+
+                <!-- Table Footer Summary for Filtered View -->
+                <div id="tableFooter" class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex flex-wrap justify-between items-center text-xs text-slate-600 gap-2">
+                    <span id="showingCountText">Affichage de 0 jours</span>
+                    <div class="flex items-center gap-4 font-semibold">
+                        <span>Total affiché: <strong id="filteredHoursText" class="text-slate-800">0h 00m</strong></span>
+                        <span>|</span>
+                        <span>Gains: <strong id="filteredEarningsText" class="text-emerald-700 text-sm">0 DA</strong></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Confirmation Modal for Resetting All Data -->
+    <div id="clearModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-fade-in">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4 mx-auto">
+                <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-center text-slate-800">Supprimer tout l'historique ?</h3>
+            <p class="text-center text-sm text-slate-600 mt-2">
+                Êtes-vous sûr de vouloir effacer toutes les journées enregistrées ? Cette action est irréversible.
+            </p>
+            <p class="text-center text-xs font-arabic text-rose-600 font-semibold mt-1">
+                رايح تمحي كاع السوايع والأيام لي سجلتهم من قبل!
+            </p>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeClearModal()" class="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition">
+                    Annuler (لا)
+                </button>
+                <button onclick="confirmClearAll()" class="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-sm shadow-md transition">
+                    Oui, tout effacer (إيه، أمحي)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200/80 py-4 px-4 text-center text-xs text-slate-500 mt-8">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p class="flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                Vos données sont sauvegardées automatiquement sur votre appareil (LocalStorage).
+            </p>
+            <p class="font-arabic text-slate-600">مخدوم خصيصاً للعمال والحرفيين في الجزائر 🇩🇿</p>
+        </div>
+    </footer>
+
+    <!-- Application JavaScript -->
+    <script>
+        // --- Storage Keys ---
+        const STORAGE_KEY_ENTRIES = 'khadmati_dz_entries_v1';
+        const STORAGE_KEY_RATE = 'khadmati_dz_hourly_rate_v1';
+
+        // --- Application State ---
+        let entries = [];
+        let hourlyRate = 250; // Default 250 DA/hour
+
+        // --- Initialize Application on Load ---
+        window.onload = function() {
+            loadDataFromStorage();
+            setDefaultDate();
+            updateLivePreview();
+            renderAll();
+        };
+
+        // Set today's date in the date picker
+        function setDefaultDate() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('entryDate').value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        // Load saved data from LocalStorage
+        function loadDataFromStorage() {
+            try {
+                const savedRate = localStorage.getItem(STORAGE_KEY_RATE);
+                if (savedRate !== null && !isNaN(parseFloat(savedRate))) {
+                    hourlyRate = parseFloat(savedRate);
+                }
+                document.getElementById('hourlyRateInput').value = hourlyRate;
+
+                const savedEntries = localStorage.getItem(STORAGE_KEY_ENTRIES);
+                if (savedEntries) {
+                    entries = JSON.parse(savedEntries);
+                }
+            } catch (error) {
+                console.error("Erreur lors du chargement des données:", error);
+            }
+        }
+
+        // Save data to LocalStorage
+        function saveDataToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY_RATE, hourlyRate.toString());
+                localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(entries));
+            } catch (error) {
+                console.error("Erreur lors de la sauvegarde:", error);
+            }
+        }
+
+        // --- Calculation Helpers ---
+        
+        // Calculate total minutes worked between checkIn and checkOut minus break
+        function calculateWorkedMinutes(checkIn, checkOut, breakMins) {
+            if (!checkIn || !checkOut) return { netMinutes: 0, isNightShift: false };
+
+            const [inH, inM] = checkIn.split(':').map(Number);
+            const [outH, outM] = checkOut.split(':').map(Number);
+
+            let startMinutes = inH * 60 + inM;
+            let endMinutes = outH * 60 + outM;
+            let isNightShift = false;
+
+            // Handle overnight shift (e.g., 20:00 to 04:00 next day)
+            if (endMinutes < startMinutes) {
+                endMinutes += 24 * 60;
+                isNightShift = true;
+            }
+
+            let grossMinutes = endMinutes - startMinutes;
+            let pause = parseInt(breakMins, 10) || 0;
+            let netMinutes = Math.max(0, grossMinutes - pause);
+
+            return { netMinutes, isNightShift };
+        }
+
+        // Format minutes into "Xh YYm"
+        function formatMinutesToHours(totalMinutes) {
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = Math.round(totalMinutes % 60);
+            const paddedMins = String(minutes).padStart(2, '0');
+            return `${hours}h ${paddedMins}m`;
+        }
+
+        // Format currency in Algerian Dinar (DA)
+        function formatDA(amount) {
+            return new Intl.NumberFormat('fr-DZ', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        // Format date string (YYYY-MM-DD) to readable French format
+        function formatDateReadable(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            const options = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' };
+            return dateObj.toLocaleDateString('fr-FR', options);
+        }
+
+        // --- Interactive UI Handlers ---
+
+        // Quick break buttons handler
+        function setBreak(minutes) {
+            document.getElementById('breakMinutes').value = minutes;
+            updateLivePreview();
+        }
+
+        // Live preview inside the form when inputs change
+        function updateLivePreview() {
+            const checkIn = document.getElementById('checkInTime').value;
+            const checkOut = document.getElementById('checkOutTime').value;
+            const breakMins = document.getElementById('breakMinutes').value;
+
+            const { netMinutes, isNightShift } = calculateWorkedMinutes(checkIn, checkOut, breakMins);
+            const decimalHours = netMinutes / 60;
+            const estimatedEarnings = decimalHours * hourlyRate;
+
+            document.getElementById('previewHours').textContent = formatMinutesToHours(netMinutes);
+            document.getElementById('previewEarnings').textContent = `${formatDA(estimatedEarnings)} DA`;
+
+            const nightBadge = document.getElementById('previewNightShift');
+            if (isNightShift) {
+                nightBadge.classList.remove('hidden');
+            } else {
+                nightBadge.classList.add('hidden');
+            }
+        }
+
+        // Update hourly rate and recalculate all entries dynamically
+        function updateHourlyRate(newRateValue) {
+            const parsed = parseFloat(newRateValue);
+            hourlyRate = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+            
+            saveDataToStorage();
+            updateLivePreview();
+            renderAll();
+        }
+
+        // Handle adding a new work day
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const date = document.getElementById('entryDate').value;
+            const checkIn = document.getElementById('checkInTime').value;
+            const checkOut = document.getElementById('checkOutTime').value;
+            const breakMins = parseInt(document.getElementById('breakMinutes').value, 10) || 0;
+            const note = document.getElementById('entryNote').value.trim();
+
+            const { netMinutes, isNightShift } = calculateWorkedMinutes(checkIn, checkOut, breakMins);
+
+            if (netMinutes <= 0) {
+                showToast("La durée de travail doit être supérieure à 0 minute!", "error");
+                return;
+            }
+
+            const newEntry = {
+                id: Date.now().toString(),
+                date: date,
+                checkIn: checkIn,
+                checkOut: checkOut,
+                breakMins: breakMins,
+                netMinutes: netMinutes,
+                isNightShift: isNightShift,
+                note: note
+            };
+
+            // Add entry and sort by date descending (newest first)
+            entries.push(newEntry);
+            entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            saveDataToStorage();
+            renderAll();
+
+            // Clear optional note and show confirmation
+            document.getElementById('entryNote').value = '';
+            showToast("Journée ajoutée avec succès ! (تم تسجيل النهار)", "success");
+        }
+
+        // Delete a single entry
+        function deleteEntry(id) {
+            entries = entries.filter(item => item.id !== id);
+            saveDataToStorage();
+            renderAll();
+            showToast("Journée supprimée (تم الحذف)", "info");
+        }
+
+        // Filter reset
+        function resetFilter() {
+            document.getElementById('monthFilter').value = '';
+            renderTable();
+        }
+
+        // --- Rendering Functions ---
+
+        function renderAll() {
+            renderDashboardSummary();
+            renderTable();
+        }
+
+        // Update top 4 global summary cards
+        function renderDashboardSummary() {
+            const totalDays = entries.length;
+            const totalMinutes = entries.reduce((sum, item) => sum + item.netMinutes, 0);
+            const totalDecimalHours = totalMinutes / 60;
+            const totalEarnings = totalDecimalHours * hourlyRate;
+            const totalCentimes = Math.round(totalEarnings * 100);
+
+            const avgMinutes = totalDays > 0 ? totalMinutes / totalDays : 0;
+
+            document.getElementById('totalDaysDisplay').textContent = totalDays;
+            document.getElementById('avgHoursPerDay').textContent = formatMinutesToHours(avgMinutes);
+            document.getElementById('totalHoursDisplay').textContent = formatMinutesToHours(totalMinutes);
+            document.getElementById('totalDecimalHours').textContent = totalDecimalHours.toFixed(2);
+            document.getElementById('totalEarningsDisplay').textContent = formatDA(totalEarnings);
+            document.getElementById('totalCentimesDisplay').textContent = `${formatDA(totalCentimes)} سنتيم`;
+        }
+
+        // Render the history table
+        function renderTable() {
+            const tbody = document.getElementById('attendanceTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const tableFooter = document.getElementById('tableFooter');
+            const monthFilter = document.getElementById('monthFilter').value;
+            const resetFilterBtn = document.getElementById('resetFilterBtn');
+
+            if (monthFilter) {
+                resetFilterBtn.classList.remove('hidden');
+            } else {
+                resetFilterBtn.classList.add('hidden');
+            }
+
+            // Filter entries if month filter is active
+            const filteredEntries = monthFilter 
+                ? entries.filter(e => e.date.startsWith(monthFilter))
+                : entries;
+
+            tbody.innerHTML = '';
+
+            if (filteredEntries.length === 0) {
+                emptyState.classList.remove('hidden');
+                tableFooter.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tableFooter.classList.remove('hidden');
+
+            let filteredMinutes = 0;
+
+            filteredEntries.forEach(entry => {
+                filteredMinutes += entry.netMinutes;
+                const entryHoursDecimal = entry.netMinutes / 60;
+                const entryEarnings = entryHoursDecimal * hourlyRate;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition group";
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <div class="font-bold text-slate-800 capitalize">${formatDateReadable(entry.date)}</div>
+                        ${entry.note ? `<div class="text-xs text-slate-500 mt-0.5 flex items-center gap-1"><i class="fa-regular fa-note-sticky text-emerald-600"></i> ${escapeHTML(entry.note)}</div>` : ''}
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <div class="inline-flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700">
+                            <span class="text-emerald-700">${entry.checkIn}</span>
+                            <i class="fa-solid fa-arrow-right text-[10px] text-slate-400"></i>
+                            <span class="text-rose-600">${entry.checkOut}</span>
+                        </div>
+                        ${entry.isNightShift ? `<span class="ml-1 text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-medium" title="Service de nuit"><i class="fa-solid fa-moon"></i> Nuit</span>` : ''}
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap text-xs text-slate-500">
+                        ${entry.breakMins > 0 ? `<span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md font-medium">${entry.breakMins} min</span>` : `<span class="text-slate-400">-</span>`}
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap">
+                        <span class="font-bold text-slate-800">${formatMinutesToHours(entry.netMinutes)}</span>
+                        <span class="block text-[11px] text-slate-400">${entryHoursDecimal.toFixed(2)} h</span>
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap text-right">
+                        <span class="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60">
+                            ${formatDA(entryEarnings)} DA
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 whitespace-nowrap text-center">
+                        <button onclick="deleteEntry('${entry.id}')" 
+                            class="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition" 
+                            title="Supprimer cette journée">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+
+            // Update footer totals for current view
+            const filteredEarnings = (filteredMinutes / 60) * hourlyRate;
+            document.getElementById('showingCountText').textContent = `Affichage de ${filteredEntries.length} jour(s)`;
+            document.getElementById('filteredHoursText').textContent = formatMinutesToHours(filteredMinutes);
+            document.getElementById('filteredEarningsText').textContent = `${formatDA(filteredEarnings)} DA`;
+        }
+
+        // --- Export & Reset Utilities ---
+
+        function exportCSV() {
+            if (entries.length === 0) {
+                showToast("Aucune donnée à exporter !", "error");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "Date,Heure Entree,Heure Sortie,Pause (Min),Heures Travaillees,Heures Decimales,Tarif Horaire (DA),Gain du Jour (DA),Remarque\n";
+
+            entries.forEach(e => {
+                const decHours = (e.netMinutes / 60).toFixed(2);
+                const gain = ((e.netMinutes / 60) * hourlyRate).toFixed(2);
+                const cleanNote = (e.note || "").replace(/,/g, " ");
+                const row = [
+                    e.date,
+                    e.checkIn,
+                    e.checkOut,
+                    e.breakMins,
+                    formatMinutesToHours(e.netMinutes),
+                    decHours,
+                    hourlyRate,
+                    gain,
+                    cleanNote
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `pointage_khadmati_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("Fichier CSV téléchargé !", "success");
+        }
+
+        function openClearModal() {
+            if (entries.length === 0) {
+                showToast("L'historique est déjà vide.", "info");
+                return;
+            }
+            document.getElementById('clearModal').classList.remove('hidden');
+        }
+
+        function closeClearModal() {
+            document.getElementById('clearModal').classList.add('hidden');
+        }
+
+        function confirmClearAll() {
+            entries = [];
+            saveDataToStorage();
+            renderAll();
+            closeClearModal();
+            showToast("Tout l'historique a été effacé.", "info");
+        }
+
+        // Simple HTML escaper for user notes
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag])
+            );
+        }
+
+        // Toast Notification helper
+        let toastTimeout;
+        function showToast(message, type = "success") {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-msg');
+
+            msg.textContent = message;
+
+            if (type === "error") {
+                icon.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
+            } else if (type === "info") {
+                icon.className = "fa-solid fa-circle-info text-blue-400 text-lg";
+            } else {
+                icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove('hidden');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>

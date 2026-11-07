@@ -1,0 +1,13 @@
+{
+  "projectId": "72656566",
+  "functions": {
+    "reset-worker-password": {
+      "hasChanged": false,
+      "hash": "d7e319fde70bdce97e03ce371351396710e514bffc2e15e2a8c5e30f392e2f2d"
+    },
+    "delete-worker": {
+      "hasChanged": false,
+      "hash": "bf3afbf4a5774be6c58cbe91cfe64e57f81de3505a0f899d890bafbabad6dc9b"
+    }
+  }
+}

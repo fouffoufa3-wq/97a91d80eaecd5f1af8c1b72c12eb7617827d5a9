@@ -1,0 +1,5 @@
+[functions.reset-worker-password]
+verify_jwt = true
+
+[functions.delete-worker]
+verify_jwt = true
